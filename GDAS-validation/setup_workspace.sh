@@ -122,10 +122,11 @@ if [ $setup = "YES" ]; then
   # copy files that need to be overwritted from default
   cp -rf $mydir/gdas_config/* $workdir/gdas_config/.
   # copy templated yamls that need to be overwritten for JEDI gdas-validation
-  cp -rf $mydir/gdas_config/jcb-base.yaml.j2  $workdir/global-workflow/sorc/gdas.cd/parm/atm/
-  cp -rf $mydir/gdas_config/3dvar_outer_loop_1.yaml.j2 $workdir/global-workflow/sorc/gdas.cd/parm/jcb-gdas/model/atmosphere/
+  cp -f $mydir/gdas_config/jcb-base.yaml.j2 $workdir/global-workflow/sorc/gdas.cd/parm/atm/
+  cp -f $mydir/gdas_config/3dvar.yaml.j2 $workdir/global-workflow/sorc/gdas.cd/parm/jcb-algorithms/ 
+  cp -f $mydir/gdas_config/3dvar_outer_loop_1.yaml.j2 $workdir/global-workflow/sorc/gdas.cd/parm/jcb-gdas/model/atmosphere/
   # copy scripts that need to be overwritten for GSI gdas-validation
-  cp -rf $mydir/gdas_config/exglobal_atmos_analysis.sh $workdir/global-workflow/scripts/
+  cp -f $mydir/gdas_config/exglobal_atmos_analysis.sh $workdir/global-workflow/scripts/
 
   HOMEgfs=$workdir/global-workflow
   source $workdir/global-workflow/ush/module-setup.sh

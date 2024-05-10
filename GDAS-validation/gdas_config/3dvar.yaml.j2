@@ -1,0 +1,68 @@
+cost function:
+
+  cost type: {{cost_type}}
+
+  time window:
+    begin: '{{window_begin}}'
+    length: '{{window_length}}'
+    bound to include: '{{ bound_to_include | default("begin", true) }}'
+
+  geometry:
+{% filter indent(width=4) %}
+{% set geometry_background_file = geometry_background_file|default('geometry_background', true) ~ '.yaml.j2' %}
+{% include geometry_background_file %}
+{% endfilter %}
+
+  analysis variables: {{analysis_variables}}
+
+  background:
+{% filter indent(width=4) %}
+{% set background_file = background_file|default('background', true) ~ '.yaml.j2' %}
+{% include background_file %}
+{% endfilter %}
+
+  background error:
+{% filter indent(width=4) %}
+{% set background_error_file = background_error_file|default('background_error', true) ~ '.yaml.j2' %}
+{% include background_error_file %}
+{% endfilter %}
+
+  observations:
+
+# There is a conditional here in case this 3DVar YAML is being used for EDA
+{% if obs_perturbations_file is defined %}
+    obs perturbations:
+{% filter indent(width=6) %}
+{% set obs_perturbations_file = obs_perturbations_file|default('obs_perturbations', true) ~ '.yaml.j2' %}
+{% include obs_perturbations_file %}
+{% endfilter %}
+{% endif %}
+
+    observers:
+{% for observation_from_jcb in observations %}
+{% if use_observer(observation_from_jcb) %}
+{% filter indent(width=4) %}
+{% include observation_from_jcb + '.yaml.j2' %}
+{% endfilter %}
+{% endif %}
+{% endfor %}
+
+variational:
+  minimizer:
+    algorithm: {{minimizer}}
+  iterations:
+# Loop over outer loops
+{% for i in range(1, number_of_outer_loops+1) %}
+{% filter indent(width=2) %}
+{% set var_outer_loop_file = '3dvar_outer_loop_' + i|string + '.yaml.j2' %}
+{% include var_outer_loop_file %}
+{% endfilter %}
+{% endfor %}
+
+final:
+  diagnostics:
+    departures: {{final_diagnostics_departures}}
+{% if final_prints_frequency is defined %}
+  prints:
+    frequency: {{final_prints_frequency}}
+{% endif %}
