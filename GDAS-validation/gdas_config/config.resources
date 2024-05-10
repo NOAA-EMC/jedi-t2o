@@ -10,7 +10,7 @@ if (( $# != 1 )); then
     echo "argument can be any one of the following:"
     echo "stage_ic aerosol_init"
     echo "prep prepsnowobs prepatmiodaobs"
-    echo "atmanlinit atmanlrun atmanlfinal"
+    echo "atmanlinit atmanlvar atmanlfv3inc atmanlfinal"
     echo "atmensanlinit atmensanlrun atmensanlfinal"
     echo "snowanl"
     echo "aeroanlinit aeroanlrun aeroanlfinal"
@@ -209,18 +209,31 @@ case ${step} in
     export memory_atmanlinit="3072M"
     ;;
 
-  "atmanlrun")
+  "atmanlvar")
     export layout_x=${layout_x_atmanl}
     export layout_y=${layout_y_atmanl}
 
-    export wtime_atmanlrun="00:30:00"
-    export npe_atmanlrun=$(( layout_x * layout_y * 6 ))
-    export npe_atmanlrun_gfs=$(( layout_x * layout_y * 6 ))
-    export nth_atmanlrun=1
-    export nth_atmanlrun_gfs=${nth_atmanlrun}
-    #export npe_node_atmanlrun=$(( npe_node_max / nth_atmanlrun ))
-    export npe_node_atmanlrun=10
-    export memory_atmanlrun="96GB"
+    export wtime_atmanlvar="00:30:00"
+    export npe_atmanlvar=$(( layout_x * layout_y * 6 ))
+    export npe_atmanlvar_gfs=$(( layout_x * layout_y * 6 ))
+    export nth_atmanlvar=1
+    export nth_atmanlvar_gfs=${nth_atmanlvar}
+    export npe_node_atmanlvar=$(( npe_node_max / nth_atmanlvar ))
+    export memory_atmanlvar="96GB"
+    export is_exclusive=True
+    ;;
+
+  "atmanlfv3inc")
+    export layout_x=${layout_x_atmanl}
+    export layout_y=${layout_y_atmanl}
+
+    export wtime_atmanlfv3inc="00:30:00"
+    export npe_atmanlfv3inc=$(( layout_x * layout_y * 6 ))
+    export npe_atmanlfv3inc_gfs=$(( layout_x * layout_y * 6 ))
+    export nth_atmanlfv3inc=1
+    export nth_atmanlfv3inc_gfs=${nth_atmanlfv3inc}
+    export npe_node_atmanlfv3inc=$(( npe_node_max / nth_atmanlfv3inc ))
+    export memory_atmanlfv3inc="96GB"
     export is_exclusive=True
     ;;
 
@@ -468,8 +481,8 @@ case ${step} in
     ;;
 
   "anal")
-    export wtime_anal="00:50:00"
-    export wtime_anal_gfs="00:40:00"
+    export wtime_anal="01:20:00"
+    export wtime_anal_gfs="01:00:00"
     export npe_anal=84
     export nth_anal=10
     #export npe_anal=780
@@ -489,6 +502,12 @@ case ${step} in
         export npe_anal_gfs=160
         export nth_anal=10
         export nth_anal_gfs=10
+        if [[ ${machine} = "HERA" ]]; then
+          export npe_anal=270
+          export npe_anal_gfs=270
+          export nth_anal=8
+          export nth_anal_gfs=8
+        fi	  
         if [[ ${machine} = "S4" ]]; then
           #On the S4-s4 partition, this is accomplished by increasing the task
           #count to a multiple of 32
@@ -550,7 +569,7 @@ case ${step} in
     ;;
 
   "sfcanl")
-    export wtime_sfcanl="00:10:00"
+    export wtime_sfcanl="00:20:00"
     export npe_sfcanl=6
     export nth_sfcanl=1
     export npe_node_sfcanl=$(( npe_node_max / nth_sfcanl ))
@@ -576,6 +595,27 @@ case ${step} in
         ntasks_fv3=${ntasks_fv3_gfs}
         ntasks_quilt=${ntasks_quilt_gfs}
         nthreads_fv3=${nthreads_fv3_gfs}
+        nthreads_ufs=${nthreads_ufs_gfs}
+      fi
+
+      # Determine if using ESMF-managed threading or traditional threading
+      # If using traditional threading, set them to 1
+      if [[ "${USE_ESMF_THREADING:-}" == "YES" ]]; then
+        export UFS_THREADS=1
+      else  # traditional threading
+        export UFS_THREADS=${nthreads_ufs:-1}
+        nthreads_fv3=1
+        nthreads_mediator=1
+        [[ "${DO_WAVE}" == "YES" ]] && nthreads_ww3=1
+        [[ "${DO_OCN}" == "YES" ]] && nthreads_mom6=1
+        [[ "${DO_ICE}" == "YES" ]] && nthreads_cice6=1
+      fi
+
+      if (( ntiles > 6 )); then
+        export layout_x_nest=${layout_x_nest:-10}
+        export layout_y_nest=${layout_y_nest:-10}
+        export npx_nest=${npx_nest:-1441}
+        export npy_nest=${npy_nest:-961}
       fi
 
       # PETS for the atmosphere dycore
@@ -652,11 +692,11 @@ case ${step} in
 
       if [[ "${_CDUMP}" =~ "gfs" ]]; then
         declare -x "npe_${step}_gfs"="${NTASKS_TOT}"
-        declare -x "nth_${step}_gfs"=1  # ESMF handles threading for the UFS-weather-model
+        declare -x "nth_${step}_gfs"="${UFS_THREADS}"
         declare -x "npe_node_${step}_gfs"="${npe_node_max}"
       else
         declare -x "npe_${step}"="${NTASKS_TOT}"
-        declare -x "nth_${step}"=1  # ESMF handles threading for the UFS-weather-model
+        declare -x "nth_${step}"="${UFS_THREADS}"
         declare -x "npe_node_${step}"="${npe_node_max}"
       fi
 
@@ -698,9 +738,14 @@ case ${step} in
       "C48" | "C96")
         export npe_upp=${CASE:1}
       ;;
-      "C192" | "C384" | "C768")
+      "C192" | "C384")
         export npe_upp=120
-        export memory_upp="48GB"
+        export memory_upp="96GB"
+      ;;
+      "C768")
+        export npe_upp=120
+        export memory_upp="96GB"
+        if [[ ${machine} == "WCOSS2" ]]; then export memory_upp="480GB" ; fi
       ;;
       *)
         echo "FATAL ERROR: Resources not defined for job ${job} at resolution ${CASE}"
@@ -986,7 +1031,7 @@ case ${step} in
     ;;
 
   "esfc")
-    export wtime_esfc="00:08:00"
+    export wtime_esfc="00:15:00"
     export npe_esfc=80
     export nth_esfc=1
     export npe_node_esfc=$(( npe_node_max / nth_esfc ))

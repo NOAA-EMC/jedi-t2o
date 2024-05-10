@@ -122,7 +122,8 @@ if [ $setup = "YES" ]; then
   # copy files that need to be overwritted from default
   cp -rf $mydir/gdas_config/* $workdir/gdas_config/.
   # copy templated yamls that need to be overwritten for JEDI gdas-validation
-  cp -rf $mydir/gdas_config/3dvar_drpcg.yaml.j2 $workdir/global-workflow/sorc/gdas.cd/parm/atm/variational/
+  cp -rf $mydir/gdas_config/jcb-base.yaml.j2  $workdir/global-workflow/sorc/gdas.cd/parm/atm/
+  cp -rf $mydir/gdas_config/3dvar_outer_loop_1.yaml.j2 $workdir/global-workflow/sorc/gdas.cd/parm/jcb-gdas/model/atmosphere/
   # copy scripts that need to be overwritten for GSI gdas-validation
   cp -rf $mydir/gdas_config/exglobal_atmos_analysis.sh $workdir/global-workflow/scripts/
 
@@ -182,5 +183,5 @@ if [ $setup = "YES" ]; then
   ln -sf $ICSDIR/gdas.${gPDY}/${gcyc}/atmos/gdas*sfcf006* ${COMROOT}/${PSLOT}_GSI/gdas.${gPDY}/${gcyc}/model_data/atmos/history/.
   ln -sf $ICSDIR/gdas.${gPDY}/${gcyc}/atmos/gdas*abias* ${COMROOT}/${PSLOT}_GSI/gdas.${gPDY}/${gcyc}/analysis/atmos/.
   # this is so the gdasatmanlfinal job completes successfully
-  sed -e '/self\.jedi2fv3inc/s/^/#/g' -i $workdir/global-workflow/ush/python/pygfs/task/atm_analysis.py
+  sed -e '/FileHandler(inc_copy/s/^/#/g' -i $workdir/global-workflow/ush/python/pygfs/task/atm_analysis.py
 fi
